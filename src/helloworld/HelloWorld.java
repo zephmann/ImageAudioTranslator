@@ -7,6 +7,9 @@ package helloworld;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -16,7 +19,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
@@ -41,17 +43,40 @@ public class HelloWorld extends Application {
     
     private BufferedImage img;
     private AudioInputStream ais;
+    
+    private HBox hb_in_info;
+    private Label in0_label;
+    private Label in1_label;
+    private Text in0_text;
+    private Text in1_text;
+    
     private double in_dim0;
     private double in_dim1;
     
     private File output_file;
     private TextField output_path;
+    private Button output_btn;
+    
+    private HBox hb_out_info;
+    private Label out0_label;
+    private Label out1_label;
+    private TextField out0_text;
+    private Text out1_text;
+    
+    private double out_dim0;
+    private double out_dim1;
     
     private Button convert_btn;
     
     @Override
     public void start(Stage primaryStage) {
-        primaryStage.setTitle("Welcome Daniel");
+        // This is to show symbol . instead of ,
+        DecimalFormatSymbols otherSymbols = new DecimalFormatSymbols(Locale.US);
+        // Define the maximum number of decimals (number of symbols #)
+        DecimalFormat df = new DecimalFormat("#.###", otherSymbols);
+
+        
+        primaryStage.setTitle("Welcome Daniel and Forrest");
         
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
@@ -61,7 +86,7 @@ public class HelloWorld extends Application {
         
         int row = 0;
         
-        Text scenetitle = new Text("Hello, Daniel, Welcome...");
+        Text scenetitle = new Text("Hello, Daniel and Forrest, Welcome...");
         scenetitle.setFont(Font.font("Comic Sans MS", FontWeight.NORMAL, 20));
         grid.add(scenetitle, 0, row, 3, 1);
         row++;
@@ -92,24 +117,43 @@ public class HelloWorld extends Application {
                 if(read_input()) {
                     input_path.setText(file.getAbsolutePath());
                     
+                    in0_text.setText(df.format(in_dim0));
+                    in1_text.setText(df.format(in_dim1));
+                    
+                    if(is_image) {
+                        in0_label.setText("Width");
+                        in1_label.setText("Height");
+                    }
+                    else {
+                        in0_label.setText("Duration (secs)");
+                        in1_label.setText("Samples");
+                    }
                 }
             }
+            
+            boolean input_empty = input_path.getText().isEmpty();
+            hb_in_info.setVisible(!input_empty);
+            output_path.setDisable(input_empty);
+            output_btn.setDisable(input_empty);    
+            
             update_convert_btn();
         });
         row++;
         
         // input info
-        HBox hb_in_info = new HBox(20);
+        hb_in_info = new HBox(20);
                 
-        Label in0_label = new Label("Width:");
+        in0_label = new Label("Width:");
         hb_in_info.getChildren().add(in0_label);
-        Text in0_text = new Text("1280");
+        in0_text = new Text("");
         hb_in_info.getChildren().add(in0_text);
         
-        Label in1_label = new Label("Height:");
+        in1_label = new Label("Height:");
         hb_in_info.getChildren().add(in1_label);
-        Text in1_text = new Text("720");
+        in1_text = new Text("");
         hb_in_info.getChildren().add(in1_text);
+        
+        hb_in_info.setVisible(false);
         
         grid.add(hb_in_info, 0, row, 4, 1);
         row++;
@@ -121,32 +165,85 @@ public class HelloWorld extends Application {
         output_path = new TextField();
         grid.add(output_path, 1, row);
         
+        output_path.setDisable(true);
+        
         FileChooser output_chooser = new FileChooser();
         
-        Button output_btn = new Button("...");
+        output_btn = new Button("...");
+        output_btn.setDisable(true);
         grid.add(output_btn, 2, row);
         output_btn.setOnAction(e -> {
             File file = output_chooser.showSaveDialog(primaryStage);
+            boolean valid_output = false;
+            
             if(file != null) {
-                output_file = file;
-                output_path.setText(file.getAbsolutePath());
+                String full_path = file.getAbsolutePath();
+                String ext = "." + get_extension(full_path);
+                
+                valid_output = true;
+                
+                if(is_image) {
+                    full_path = (
+                        full_path.substring(0, full_path.length()-4) + ".wav"
+                    );
+                    
+                    out_dim1 = 44100;
+                    out_dim0 = (in_dim0 * in_dim1) / out_dim1;
+
+                    out0_text.setText(Double.toString(out_dim0));
+                    out1_text.setText(df.format(out_dim1));
+
+                    out0_label.setText("Duration (secs)");
+                    out1_label.setText("Samples");
+                }
+                else {
+                    full_path = (
+                        full_path.substring(0, full_path.length()-4) + ".png"
+                    );
+                    
+                    double total = Math.ceil(in_dim0 * in_dim1);
+                    double root = Math.sqrt(total);
+                    
+                    for(int i = (int)Math.floor(root); i > 0; i--) {
+                        if(total%i == 0) {
+                            out_dim0 = i;
+                            out_dim1 = total / i;
+                            break;
+                        }
+                    }
+                    
+                    out0_text.setText(Double.toString(out_dim0));
+                    out1_text.setText(Double.toString(out_dim1));
+
+                    out0_label.setText("Duration (secs)");
+                    out1_label.setText("Samples");
+                }
+                
+                output_file = new File(full_path);
+                
+                output_path.setText(output_file.getAbsolutePath());
+                
             }
+            hb_out_info.setVisible(valid_output);
+            
             update_convert_btn();
         });
         row++;
         
         // output options
-        HBox hb_out_info = new HBox(20);
-                
-        Label out0_label = new Label("Duration:");
+        hb_out_info = new HBox(20);
+        
+        out0_label = new Label("");
         hb_out_info.getChildren().add(out0_label);
-        Text out0_text = new Text("120");
+        out0_text = new TextField("");
         hb_out_info.getChildren().add(out0_text);
         
-        Label out1_label = new Label("Samples:");
+        out1_label = new Label("");
         hb_out_info.getChildren().add(out1_label);
-        Text out1_text = new Text("44100");
+        out1_text = new Text("");
         hb_out_info.getChildren().add(out1_text);
+        
+        hb_out_info.setVisible(false);
         
         grid.add(hb_out_info, 0, row, 4, 1);
         row++;
@@ -250,9 +347,10 @@ public class HelloWorld extends Application {
 
 /**
  * TODO
- * have input and output info fields hidden until path is specified?
- * update input info based on loaded file
- * when output file is specified, update labels and allow for input
+ * move setOnAction to run when input / output text fields are set rathe than
+ *  when the file dialog buttons are clicked, that way they'll also validate
+ *  if the user enters text directly
+ * force output to have correct file extension
+ * add default output path when input is specified
  * hook up convert button
- * good method for scaling to desired dimensions?
  */
