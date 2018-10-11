@@ -3,18 +3,21 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package helloworld;
+package ImageAudioTranlator;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Locale;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
@@ -29,12 +32,8 @@ import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
-
-/**
- *
- * @author Zip
- */
-public class HelloWorld extends Application {
+        
+public class TranslatorUI extends Application {
     
     private File input_file;
     private TextField input_path;
@@ -50,9 +49,6 @@ public class HelloWorld extends Application {
     private Text in0_text;
     private Text in1_text;
     
-    private double in_dim0;
-    private double in_dim1;
-    
     private File output_file;
     private TextField output_path;
     private Button output_btn;
@@ -60,22 +56,26 @@ public class HelloWorld extends Application {
     private HBox hb_out_info;
     private Label out0_label;
     private Label out1_label;
-    private TextField out0_text;
+    private TextField out_sample_field;
+    private ComboBox out_height_field;
     private Text out1_text;
     
-    private double out_dim0;
-    private double out_dim1;
+    private int width;
+    private int height;
+    private double duration;
+    private int samples;
     
     private Button convert_btn;
+    
+    private DecimalFormat df;
     
     @Override
     public void start(Stage primaryStage) {
         // This is to show symbol . instead of ,
         DecimalFormatSymbols otherSymbols = new DecimalFormatSymbols(Locale.US);
         // Define the maximum number of decimals (number of symbols #)
-        DecimalFormat df = new DecimalFormat("#.###", otherSymbols);
+        df = new DecimalFormat("#.###", otherSymbols);
 
-        
         primaryStage.setTitle("Welcome Daniel and Forrest");
         
         GridPane grid = new GridPane();
@@ -92,7 +92,7 @@ public class HelloWorld extends Application {
         row++;
         
         Text description = new Text(
-            "Convert an image to a .wav file or a .wav  file to an image."
+            "Convert an image to a .wav file! (or a .wav  file to an image...)"
         );
         description.setFont(Font.font("Comic Sans MS", FontWeight.NORMAL, 14));
         grid.add(description, 0, row, 3, 1);
@@ -104,30 +104,47 @@ public class HelloWorld extends Application {
 
         input_path = new TextField();
         input_path.setMinWidth(500);
+        input_path.setEditable(false);
         grid.add(input_path, 1, row);
         
         FileChooser input_chooser = new FileChooser();
+        input_chooser.setInitialDirectory(new File(
+            System.getProperty("user.home"), "Pictures"
+        ));
         
-        Button input_btn = new Button("...");
+        Button input_btn = new Button("select");
         grid.add(input_btn, 2, row);
         input_btn.setOnAction(e -> {
             File file = input_chooser.showOpenDialog(primaryStage);
             if(file != null) {
                 input_file = file;
                 if(read_input()) {
-                    input_path.setText(file.getAbsolutePath());
+                    String full_path = file.getAbsolutePath();
                     
-                    in0_text.setText(df.format(in_dim0));
-                    in1_text.setText(df.format(in_dim1));
+                    input_path.setText(full_path);
                     
                     if(is_image) {
                         in0_label.setText("Width");
+                        in0_text.setText(Integer.toString(width));
                         in1_label.setText("Height");
+                        in1_text.setText(Integer.toString(height));
                     }
                     else {
                         in0_label.setText("Duration (secs)");
+                        in0_text.setText(df.format(duration));
                         in1_label.setText("Samples");
+                        in1_text.setText(Integer.toString(samples));
                     }
+                    
+                    String ext = is_image ? ".wav" : ".png";
+                    full_path = (
+                        full_path.substring(0, full_path.length()-4) + ext
+                    );
+                    output_path.setText(full_path);
+
+                    update_output(full_path);
+                    
+                    hb_out_info.setVisible(true);
                 }
             }
             
@@ -166,10 +183,11 @@ public class HelloWorld extends Application {
         grid.add(output_path, 1, row);
         
         output_path.setDisable(true);
+        output_path.setEditable(false);
         
         FileChooser output_chooser = new FileChooser();
         
-        output_btn = new Button("...");
+        output_btn = new Button("select");
         output_btn.setDisable(true);
         grid.add(output_btn, 2, row);
         output_btn.setOnAction(e -> {
@@ -178,46 +196,10 @@ public class HelloWorld extends Application {
             
             if(file != null) {
                 String full_path = file.getAbsolutePath();
-                String ext = "." + get_extension(full_path);
                 
                 valid_output = true;
                 
-                if(is_image) {
-                    full_path = (
-                        full_path.substring(0, full_path.length()-4) + ".wav"
-                    );
-                    
-                    out_dim1 = 44100;
-                    out_dim0 = (in_dim0 * in_dim1) / out_dim1;
-
-                    out0_text.setText(Double.toString(out_dim0));
-                    out1_text.setText(df.format(out_dim1));
-
-                    out0_label.setText("Duration (secs)");
-                    out1_label.setText("Samples");
-                }
-                else {
-                    full_path = (
-                        full_path.substring(0, full_path.length()-4) + ".png"
-                    );
-                    
-                    double total = Math.ceil(in_dim0 * in_dim1);
-                    double root = Math.sqrt(total);
-                    
-                    for(int i = (int)Math.floor(root); i > 0; i--) {
-                        if(total%i == 0) {
-                            out_dim0 = i;
-                            out_dim1 = total / i;
-                            break;
-                        }
-                    }
-                    
-                    out0_text.setText(Double.toString(out_dim0));
-                    out1_text.setText(Double.toString(out_dim1));
-
-                    out0_label.setText("Duration (secs)");
-                    out1_label.setText("Samples");
-                }
+                update_output(full_path);
                 
                 output_file = new File(full_path);
                 
@@ -235,8 +217,11 @@ public class HelloWorld extends Application {
         
         out0_label = new Label("");
         hb_out_info.getChildren().add(out0_label);
-        out0_text = new TextField("");
-        hb_out_info.getChildren().add(out0_text);
+        out_height_field = new ComboBox();
+        hb_out_info.getChildren().add(out_height_field);
+        out_sample_field = new TextField("");
+        hb_out_info.getChildren().add(out_sample_field);
+        out_sample_field.setVisible(false);
         
         out1_label = new Label("");
         hb_out_info.getChildren().add(out1_label);
@@ -256,6 +241,23 @@ public class HelloWorld extends Application {
         
         convert_btn = new Button("Convert");
         convert_btn.setDisable(true);
+        
+        convert_btn.setOnAction(e -> {
+            FileTranslator ft = new FileTranslator(
+                input_path.getText(),
+                output_path.getText(),
+                width,
+                height,
+                duration,
+                samples
+            );
+            String errors = ft.translate(is_image);
+            if(errors.isEmpty())
+                System.out.println("Success!");
+            else
+                System.out.println("failed");
+        });
+        
         HBox hbBtn = new HBox(0);
         hbBtn.setAlignment(Pos.BOTTOM_RIGHT);
         hbBtn.getChildren().add(convert_btn);
@@ -288,10 +290,10 @@ public class HelloWorld extends Application {
                 AudioFormat format = ais.getFormat();
                 
                 // duration in seconds
-                in_dim0 = (double)(ais.getFrameLength()) / format.getFrameRate();
+                duration = (double)(ais.getFrameLength()) / format.getFrameRate();
                 
                 // samples per second
-                in_dim1 = format.getSampleRate();
+                samples = (int)format.getSampleRate();
                 
                 is_image = false;
                 
@@ -309,10 +311,10 @@ public class HelloWorld extends Application {
                 img = ImageIO.read(input_file);
                 
                 // width of image
-                in_dim0 = img.getWidth();
+                width = (int)img.getWidth();
                 
                 // height of image
-                in_dim1 = img.getHeight();
+                height = (int)img.getHeight();
                 
                 is_image = true;
                 return true;
@@ -327,6 +329,64 @@ public class HelloWorld extends Application {
         else
             System.out.println("Only .wav, .png, and .jpg are supported.");
         return false;
+    }
+    
+    private void update_output(String full_path) {
+        full_path = full_path.substring(0, full_path.length()-4);
+        if(is_image) {
+            full_path += ".wav";
+            
+            // calculate total pixels, default to 44100 samples
+            samples = 44100;
+            duration = (double)(width * height) / samples;
+            
+            out0_label.setText("Samples");
+            out_sample_field.setText(Integer.toString(samples));
+            out1_label.setText("Duration (secs)");
+            out1_text.setText(df.format(duration));
+            
+            out_sample_field.setVisible(true);
+            out_height_field.setVisible(false);
+        }
+        else {
+            full_path += ".png";
+
+            // calculate total number of samples in wav file
+            // find all integer factors of total and add them to combobox
+            int total = (int)(samples * duration);
+            int root = (int)Math.ceil(Math.sqrt(total));
+            
+            out_height_field.getItems().clear();
+            height = -1;
+            
+            System.out.println("Total " + total);
+            
+            ArrayList factors = new ArrayList();
+            
+            for(int i = root; i > 0; i--) {
+                if(total%i == 0) {
+                    if(height == -1) {
+                        height = i;
+                        out_height_field.setValue(i);
+                    }
+                    System.out.println("Add " + i);
+                    factors.add(i);
+                    factors.add(total/i);
+                }
+            }
+            
+            Collections.sort(factors);
+            out_height_field.getItems().addAll(factors);
+            
+            width = total / height;
+
+            out0_label.setText("Height");
+            out1_label.setText("Width");
+            out1_text.setText(Integer.toString(width));
+            
+            out_sample_field.setVisible(false);
+            out_height_field.setVisible(true);
+        }
     }
     
     private void update_convert_btn() {
