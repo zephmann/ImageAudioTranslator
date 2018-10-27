@@ -23,7 +23,6 @@ public class FileTranslator {
     private int height;
     private double duration;
     private int samples;
-    private boolean is_image;
     
     public FileTranslator(
         String _in_path,
@@ -41,11 +40,7 @@ public class FileTranslator {
         samples = _samples;
     }
     
-    public String translate(boolean is_image) {
-        return is_image ? translate_image() : translate_audio();
-    }
-    
-    private String translate_image() {
+    public String translate_image() {
         // read in image
         BufferedImage img;
         try {
@@ -62,7 +57,7 @@ public class FileTranslator {
         short num_channels = 1;
         
         try {
-            /*DataOutputStream outStream = new DataOutputStream(
+            DataOutputStream outStream = new DataOutputStream(
                 new FileOutputStream(new File(out_path))
             );
             
@@ -75,8 +70,8 @@ public class FileTranslator {
             outStream.write(intToByteArray(16), 0, 4); // 16 - size of this chunk
             outStream.write(shortToByteArray((short) 1), 0, 2); // 20 - what is the audio format? 1 for PCM = Pulse Code Modulation
             outStream.write(shortToByteArray(num_channels), 0, 2); // 22 - mono or stereo? 1 or 2? (or 5 or ???)
-            outStream.write(intToByteArray(dim1), 0, 4); // 24 - samples per second (numbers per second)
-            outStream.write(intToByteArray(SAMPLE_RATE * numChannels), 0, 4); // 28 - bytes per second
+            outStream.write(intToByteArray(samples), 0, 4); // 24 - samples per second (numbers per second)
+            outStream.write(intToByteArray(8), 0, 4); // 28 - bytes per second
             outStream.write(shortToByteArray((short) ((BITS_PER_SAMPLE / 8) * numChannels)), 0, 2); // 32 - # of bytes in one sample, for all channels
             outStream.write(shortToByteArray((short) BITS_PER_SAMPLE), 0, 2); // 34 - how many bits in a sample(number)? usually 16 or 24
             outStream.writeBytes("data"); // 36 - data
@@ -84,7 +79,7 @@ public class FileTranslator {
             outStream.write(byteSamples); // 44 - the actual data itself - just a long string of numbers
 
             outStream.close();
-            */
+            
         } catch (Exception e) {
             e.printStackTrace();
             return "Failed to write out .wav file.";
@@ -93,7 +88,7 @@ public class FileTranslator {
         return "";
     }
     
-    private String translate_audio() {
+    public String translate_audio() {
         System.out.println("Translating audio to image");
         
         return "";

@@ -251,11 +251,15 @@ public class TranslatorUI extends Application {
                 duration,
                 samples
             );
-            String errors = ft.translate(is_image);
+            
+            String errors = (
+                is_image ? ft.translate_image() : ft.translate_audio()
+            );
+            
             if(errors.isEmpty())
                 System.out.println("Success!");
             else
-                System.out.println("failed");
+                System.out.println("failed\n" + errors);
         });
         
         HBox hbBtn = new HBox(0);
