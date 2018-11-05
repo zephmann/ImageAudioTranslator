@@ -16,6 +16,8 @@ import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -62,6 +64,7 @@ public class TranslatorUI extends Application {
     
     private int width;
     private int height;
+    private int total;
     private double duration;
     private int samples;
     
@@ -108,6 +111,8 @@ public class TranslatorUI extends Application {
         grid.add(input_path, 1, row);
         
         FileChooser input_chooser = new FileChooser();
+        FileChooser output_chooser = new FileChooser();
+        
         input_chooser.setInitialDirectory(new File(
             System.getProperty("user.home"), "Pictures"
         ));
@@ -136,11 +141,17 @@ public class TranslatorUI extends Application {
                         in1_text.setText(Integer.toString(samples));
                     }
                     
-                    String ext = is_image ? ".wav" : ".png";
+                    String ext = is_image ? ".wav" : ".jpg";
                     full_path = (
                         full_path.substring(0, full_path.length()-4) + ext
                     );
                     output_path.setText(full_path);
+                    output_file = new File(full_path);
+                    
+                    if(file.getParentFile() != null) {
+                        input_chooser.setInitialDirectory(file.getParentFile());
+                        output_chooser.setInitialDirectory(file.getParentFile());
+                    }
 
                     update_output(full_path);
                     
@@ -185,8 +196,6 @@ public class TranslatorUI extends Application {
         output_path.setDisable(true);
         output_path.setEditable(false);
         
-        FileChooser output_chooser = new FileChooser();
-        
         output_btn = new Button("select");
         output_btn.setDisable(true);
         grid.add(output_btn, 2, row);
@@ -199,13 +208,17 @@ public class TranslatorUI extends Application {
                 
                 valid_output = true;
                 
-                update_output(full_path);
-                
                 output_file = new File(full_path);
                 
                 output_path.setText(output_file.getAbsolutePath());
                 
+                if(file.getParentFile() != null)
+                    output_chooser.setInitialDirectory(file.getParentFile());
             }
+            else {
+                valid_output = output_file.exists();
+            }
+            
             hb_out_info.setVisible(valid_output);
             
             update_convert_btn();
@@ -229,6 +242,12 @@ public class TranslatorUI extends Application {
         hb_out_info.getChildren().add(out1_text);
         
         hb_out_info.setVisible(false);
+        
+        out_height_field.setOnAction(e -> {
+            height = (Integer) out_height_field.getValue();
+            width = total / height;
+            out1_text.setText(Integer.toString(width));
+        });
         
         grid.add(hb_out_info, 0, row, 4, 1);
         row++;
@@ -256,10 +275,30 @@ public class TranslatorUI extends Application {
                 is_image ? ft.translate_image() : ft.translate_audio()
             );
             
-            if(errors.isEmpty())
-                System.out.println("Success!");
-            else
-                System.out.println("failed\n" + errors);
+            if(errors.isEmpty()) {
+                Alert alert = new Alert(AlertType.INFORMATION);
+                alert.setTitle("Convert!");
+                alert.setHeaderText("Success!");
+                
+                if(is_image)
+                    alert.setContentText(
+                        "Converted a dumb ol' image to a sick-ass audio file!"
+                    );
+                else
+                    alert.setContentText(
+                        "Converted a dumb ol' audio file to a sick-ass image!"
+                    );
+
+                alert.showAndWait();
+            }
+            else {
+                Alert alert = new Alert(AlertType.ERROR);
+                alert.setTitle("Convert!");
+                alert.setHeaderText("Errors encountered!");
+                alert.setContentText(errors);
+                
+                alert.showAndWait();
+            }
         });
         
         HBox hbBtn = new HBox(0);
@@ -353,29 +392,26 @@ public class TranslatorUI extends Application {
             out_height_field.setVisible(false);
         }
         else {
-            full_path += ".png";
+            full_path += ".jpg";
 
             // calculate total number of samples in wav file
             // find all integer factors of total and add them to combobox
-            int total = (int)(samples * duration);
+            total = (int)(samples * duration);
             int root = (int)Math.ceil(Math.sqrt(total));
             
             out_height_field.getItems().clear();
             height = -1;
             
-            System.out.println("Total " + total);
-            
             ArrayList factors = new ArrayList();
             
             for(int i = root; i > 0; i--) {
-                if(total%i == 0) {
+                if(total % i == 0) {
                     if(height == -1) {
                         height = i;
                         out_height_field.setValue(i);
                     }
-                    System.out.println("Add " + i);
                     factors.add(i);
-                    factors.add(total/i);
+                    factors.add(total / i);
                 }
             }
             
