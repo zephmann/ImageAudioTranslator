@@ -55,9 +55,6 @@ public class FileTranslator {
             return "Failed to open image file";
         }
         
-        // get pixel array
-        
-        
         // get image data
         byte[] pixels = (
             ((DataBufferByte) image.getRaster().getDataBuffer()).getData()
@@ -103,16 +100,36 @@ public class FileTranslator {
                 new FileInputStream(new File(in_path))
             );
             
-            in_stream.skipBytes(40);
+            /*for(int i = 0; i < 11; i++) {
+                byte[] length_bytes = new byte[4];
+                in_stream.read(length_bytes, 0, 4);
+                
+                int data_length = byteArrayToInt(length_bytes);
+                
+                System.out.println("offset " + (i*4) + " value " + data_length);
+            }*/
+            
+            in_stream.skipBytes(16);
             
             byte[] length_bytes = new byte[4];
             in_stream.read(length_bytes, 0, 4);
             
+            int header_size = byteArrayToInt(length_bytes);
+            
+            in_stream.skipBytes(header_size+4);
+            
+            length_bytes = new byte[4];
+            in_stream.read(length_bytes, 0, 4);
+            
             int data_length = byteArrayToInt(length_bytes);
+            
+            System.out.println("Length " + data_length);
             
             byte[] samples = new byte[data_length];
             
             int num_read = in_stream.read(samples, 0, data_length);
+            
+            System.out.println("Read in " + num_read);
             
             // Double check that the header is correct
             if(num_read != data_length) {
@@ -141,7 +158,7 @@ public class FileTranslator {
             ImageIO.write(image , "jpg", new File(out_path));
             
         } catch(Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(System.out);
             return "Failed to read in .wav file.";
         }
         
@@ -163,14 +180,6 @@ public class FileTranslator {
             (bytes[2] & 0xFF) << 16 | 
             (bytes[1] & 0xFF) << 8 | 
             (bytes[0] & 0xFF)
-        );
-    }
-    
-    private static int bytesToPixelInt(byte b2, byte b1, byte b0) {
-        return (
-            (b2 & 0xFF) << 16 | 
-            (b1 & 0xFF) << 8 | 
-            (b0 & 0xFF)
         );
     }
     

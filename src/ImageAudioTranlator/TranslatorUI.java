@@ -67,6 +67,7 @@ public class TranslatorUI extends Application {
     private int total;
     private double duration;
     private int samples;
+    private int frame_size;
     
     private Button convert_btn;
     
@@ -201,7 +202,7 @@ public class TranslatorUI extends Application {
         grid.add(output_btn, 2, row);
         output_btn.setOnAction(e -> {
             File file = output_chooser.showSaveDialog(primaryStage);
-            boolean valid_output = false;
+            boolean valid_output;
             
             if(file != null) {
                 String full_path = file.getAbsolutePath();
@@ -216,7 +217,7 @@ public class TranslatorUI extends Application {
                     output_chooser.setInitialDirectory(file.getParentFile());
             }
             else {
-                valid_output = output_file.exists();
+                valid_output = !output_path.getText().isEmpty();
             }
             
             hb_out_info.setVisible(valid_output);
@@ -244,9 +245,19 @@ public class TranslatorUI extends Application {
         hb_out_info.setVisible(false);
         
         out_height_field.setOnAction(e -> {
-            height = (Integer) out_height_field.getValue();
-            width = total / height;
-            out1_text.setText(Integer.toString(width));
+            if(out_height_field.getValue() != null) {
+                height = (Integer) out_height_field.getValue();
+                width = total / height;
+                out1_text.setText(Long.toString(width));
+            }
+        });
+        
+        out_sample_field.setOnAction(e -> {
+            System.out.println("hi");
+            samples = Integer.parseInt(out_sample_field.getText());
+            System.out.println(total + " " + samples);
+            duration = (double)(total) / samples;
+            out1_text.setText(df.format(duration));
         });
         
         grid.add(hb_out_info, 0, row, 4, 1);
@@ -332,6 +343,10 @@ public class TranslatorUI extends Application {
                 ais = AudioSystem.getAudioInputStream(input_file);
                 AudioFormat format = ais.getFormat();
                 
+                frame_size = format.getFrameSize();
+                
+                total = (int)ais.getFrameLength();
+                
                 // duration in seconds
                 duration = (double)(ais.getFrameLength()) / format.getFrameRate();
                 
@@ -359,6 +374,8 @@ public class TranslatorUI extends Application {
                 // height of image
                 height = (int)img.getHeight();
                 
+                total = width * height * 3;
+                
                 is_image = true;
                 return true;
             }
@@ -381,10 +398,10 @@ public class TranslatorUI extends Application {
             
             // calculate total pixels, default to 44100 samples
             samples = 44100;
-            duration = (double)(width * height) / samples;
+            duration = (double)(total) / samples;
             
             out0_label.setText("Samples");
-            out_sample_field.setText(Integer.toString(samples));
+            out_sample_field.setText(Long.toString(samples));
             out1_label.setText("Duration (secs)");
             out1_text.setText(df.format(duration));
             
@@ -396,7 +413,9 @@ public class TranslatorUI extends Application {
 
             // calculate total number of samples in wav file
             // find all integer factors of total and add them to combobox
-            total = (int)(samples * duration);
+            total = (int)(samples * duration * frame_size);
+            System.out.println(total);
+            total /= 3;
             int root = (int)Math.ceil(Math.sqrt(total));
             
             out_height_field.getItems().clear();
@@ -422,7 +441,7 @@ public class TranslatorUI extends Application {
 
             out0_label.setText("Height");
             out1_label.setText("Width");
-            out1_text.setText(Integer.toString(width));
+            out1_text.setText(Long.toString(width));
             
             out_sample_field.setVisible(false);
             out_height_field.setVisible(true);
