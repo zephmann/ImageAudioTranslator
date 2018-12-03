@@ -73,7 +73,7 @@ public class FileTranslator {
             out_stream.write(intToByteArray(36 + pixels.length), 0, 4); // 04 - how big is the rest of this file?
             out_stream.writeBytes("WAVE"); // 08 - WAVE
             out_stream.writeBytes("fmt "); // 12 - fmt
-            out_stream.write(intToByteArray(16), 0, 4); // 16 - size of this chunk
+            out_stream.write(intToByteArray(16), 0, 4); // 16 - size of this chunk?  16 for PCM
             out_stream.write(shortToByteArray((short) 1), 0, 2); // 20 - what is the audio format? 1 for PCM = Pulse Code Modulation
             out_stream.write(shortToByteArray(num_channels), 0, 2); // 22 - mono or stereo? 1 or 2? (or 5 or ???)
             out_stream.write(intToByteArray(samples), 0, 4); // 24 - samples per second (numbers per second)
@@ -100,6 +100,108 @@ public class FileTranslator {
                 new FileInputStream(new File(in_path))
             );
             
+            byte[] length_bytes;
+            int data_length;
+            
+            length_bytes = new byte[4];
+            in_stream.read(length_bytes, 0, 4);
+            data_length = byteArrayToInt(length_bytes);
+            System.out.println("ChunkID (RIFF) " + + data_length);
+            for(int b = 0; b < 4; b++) {
+                System.out.print(String.format("%02X ", length_bytes[b]) + " ");
+            }
+            System.out.println();
+            
+            length_bytes = new byte[4];
+            in_stream.read(length_bytes, 0, 4);
+            data_length = byteArrayToInt(length_bytes);
+            System.out.println("ChunkSize " + data_length);
+            for(int b = 0; b < 4; b++) {
+                System.out.print(String.format("%02X ", length_bytes[b]) + " ");
+            }
+            System.out.println();
+            
+            length_bytes = new byte[4];
+            in_stream.read(length_bytes, 0, 4);
+            data_length = byteArrayToInt(length_bytes);
+            System.out.println("Format (WAVE) " + data_length);
+            for(int b = 0; b < 4; b++) {
+                System.out.print(String.format("%02X ", length_bytes[b]) + " ");
+            }
+            System.out.println();
+            
+            length_bytes = new byte[4];
+            in_stream.read(length_bytes, 0, 4);
+            data_length = byteArrayToInt(length_bytes);
+            System.out.println("Subchunk1ID (fmt ) " + data_length);
+            for(int b = 0; b < 4; b++) {
+                System.out.print(String.format("%02X ", length_bytes[b]) + " ");
+            }
+            System.out.println();
+            
+            length_bytes = new byte[4];
+            in_stream.read(length_bytes, 0, 4);
+            data_length = byteArrayToInt(length_bytes);
+            System.out.println("Subchunk1Size (16 for PCM) " + data_length);
+            for(int b = 0; b < 4; b++) {
+                System.out.print(String.format("%02X ", length_bytes[b]) + " ");
+            }
+            System.out.println();
+            
+            length_bytes = new byte[2];
+            in_stream.read(length_bytes, 0, 2);
+            data_length = byteArrayToShort(length_bytes);
+            System.out.println("AudioFormat (1 for PCM) " + data_length);
+            for(int b = 0; b < 2; b++) {
+                System.out.print(String.format("%02X ", length_bytes[b]) + " ");
+            }
+            System.out.println();
+            
+            length_bytes = new byte[2];
+            in_stream.read(length_bytes, 0, 2);
+            data_length = byteArrayToShort(length_bytes);
+            System.out.println("Num Channels " + data_length);
+            for(int b = 0; b < 2; b++) {
+                System.out.print(String.format("%02X ", length_bytes[b]) + " ");
+            }
+            System.out.println();
+            
+            length_bytes = new byte[4];
+            in_stream.read(length_bytes, 0, 4);
+            data_length = byteArrayToInt(length_bytes);
+            System.out.println("Sample Rate " + data_length);
+            for(int b = 0; b < 4; b++) {
+                System.out.print(String.format("%02X ", length_bytes[b]) + " ");
+            }
+            System.out.println();
+            
+            length_bytes = new byte[4];
+            in_stream.read(length_bytes, 0, 4);
+            data_length = byteArrayToInt(length_bytes);
+            System.out.println("Byte Rate " + data_length);
+            for(int b = 0; b < 4; b++) {
+                System.out.print(String.format("%02X ", length_bytes[b]) + " ");
+            }
+            System.out.println();
+            
+            length_bytes = new byte[2];
+            in_stream.read(length_bytes, 0, 2);
+            data_length = byteArrayToShort(length_bytes);
+            System.out.println("Block Align " + data_length);
+            for(int b = 0; b < 2; b++) {
+                System.out.print(String.format("%02X ", length_bytes[b]) + " ");
+            }
+            System.out.println();
+            
+            length_bytes = new byte[2];
+            in_stream.read(length_bytes, 0, 2);
+            data_length = byteArrayToShort(length_bytes);
+            System.out.println("Bits Per Sample " + data_length);
+            for(int b = 0; b < 2; b++) {
+                System.out.print(String.format("%02X ", length_bytes[b]) + " ");
+            }
+            System.out.println();
+            
             /*for(int i = 0; i < 11; i++) {
                 byte[] length_bytes = new byte[4];
                 in_stream.read(length_bytes, 0, 4);
@@ -107,11 +209,19 @@ public class FileTranslator {
                 int data_length = byteArrayToInt(length_bytes);
                 
                 System.out.println("offset " + (i*4) + " value " + data_length);
+                
+                for(int b = 0; b < 4; b++) {
+                    System.out.print(length_bytes[b] + " ");
+                }
+                System.out.println();
             }*/
+            
+            if(true)
+                return "";
             
             in_stream.skipBytes(16);
             
-            byte[] length_bytes = new byte[4];
+            //byte[] length_bytes = new byte[4];
             in_stream.read(length_bytes, 0, 4);
             
             int header_size = byteArrayToInt(length_bytes);
@@ -121,7 +231,7 @@ public class FileTranslator {
             length_bytes = new byte[4];
             in_stream.read(length_bytes, 0, 4);
             
-            int data_length = byteArrayToInt(length_bytes);
+            //int data_length = byteArrayToInt(length_bytes);
             
             System.out.println("Length " + data_length);
             
@@ -185,5 +295,12 @@ public class FileTranslator {
     
     public static byte[] shortToByteArray(short data) {
         return new byte[] { (byte) (data & 0xff), (byte) ((data >>> 8) & 0xff) };
+    }
+    
+    private static int byteArrayToShort(byte[] bytes) {
+        return (
+            (bytes[1] & 0xFF) << 8 | 
+            (bytes[0] & 0xFF)
+        );
     }
 }
