@@ -45,6 +45,11 @@ public class FileTranslator {
     }
     
     public String translate_image() {
+        /*
+        Reads in the Pixels of an image as a byte array, shifts the values
+        from [0, 255] to [-128, 127], then writes them out as the byte data of
+        a wave audio file.
+        */
         // read in image
         BufferedImage image;
         try {
@@ -60,8 +65,26 @@ public class FileTranslator {
             ((DataBufferByte) image.getRaster().getDataBuffer()).getData()
         );
         
-        short num_channels = 1;
-        short bits_per_sample = 8;
+        
+        // shift the byte values from [0, 255] to [-128, 127]
+        // since Java only supports signed bytes, we need to convert them
+        // to int values first to avoid wrap-around
+        int temp;
+        for(int i = 0; i < pixels.length; i++) {
+            temp = (int)pixels[i];
+            if(temp < 0)
+                temp += 256;
+            temp -= 128;
+            pixels[i] = (byte)(temp & 0xff);
+        }
+        
+        // the number of color channels (grayscale, rgb, rgba)
+        short num_chans = (short)image.getRaster().getNumDataElements();
+        
+        // the number of bits per color channel
+        // start with 8 bits per channel
+        short bits_per_samp = (short)8;
+        short bytes_per_samp = (short)(bits_per_samp / (short)8);
         
         try {
             DataOutputStream out_stream = new DataOutputStream(
@@ -70,19 +93,37 @@ public class FileTranslator {
             
             // write the wav file per the wav file format
             out_stream.writeBytes("RIFF"); // 00 - RIFF
-            out_stream.write(intToByteArray(36 + pixels.length), 0, 4); // 04 - how big is the rest of this file?
+            // 04 - total size of file, 36 for header plus length of byte array
+            out_stream.write(intToByteArray(36 + pixels.length), 0, 4);
             out_stream.writeBytes("WAVE"); // 08 - WAVE
+            
+            // format chunk
             out_stream.writeBytes("fmt "); // 12 - fmt
-            out_stream.write(intToByteArray(16), 0, 4); // 16 - size of this chunk?  16 for PCM
-            out_stream.write(shortToByteArray((short) 1), 0, 2); // 20 - what is the audio format? 1 for PCM = Pulse Code Modulation
-            out_stream.write(shortToByteArray(num_channels), 0, 2); // 22 - mono or stereo? 1 or 2? (or 5 or ???)
-            out_stream.write(intToByteArray(samples), 0, 4); // 24 - samples per second (numbers per second)
-            out_stream.write(intToByteArray(8), 0, 4); // 28 - bytes per second
-            out_stream.write(shortToByteArray((short) ((bits_per_sample / 8) * num_channels)), 0, 2); // 32 - # of bytes in one sample, for all channels
-            out_stream.write(shortToByteArray((short) bits_per_sample), 0, 2); // 34 - how many bits in a sample(number)? usually 16 or 24
+            // 16 - size of format chunk (always 16 for PCM)
+            out_stream.write(intToByteArray(16), 0, 4);
+            // 20 - the audio format (always 1 for PCM)
+            out_stream.write(shortToByteArray((short) 1), 0, 2);
+            // 22 - number of channels
+            out_stream.write(shortToByteArray(num_chans), 0, 2);
+            // 24 - samples per second
+            out_stream.write(intToByteArray(samples), 0, 4);
+            // 28 - bytes per second
+            out_stream.write(
+                intToByteArray((samples * num_chans * bytes_per_samp)), 0, 4
+            );
+            // 32 - number of bytes for all channels per sample
+            out_stream.write(
+                shortToByteArray((short)(num_chans * bytes_per_samp)), 0, 2
+            );
+            // 34 - bit depth for per sample (8, 16, 32)
+            out_stream.write(shortToByteArray((short) bits_per_samp), 0, 2);
+            
+            // data chunk
             out_stream.writeBytes("data"); // 36 - data
-            out_stream.write(intToByteArray(pixels.length), 0, 4); // 40 - how big is this data chunk
-            out_stream.write(pixels); // 44 - the actual data itself - just a long string of numbers
+            // 40 - how big is this data chunk
+            out_stream.write(intToByteArray(pixels.length), 0, 4);
+            // 44 - the data array
+            out_stream.write(pixels);
 
             out_stream.close();
             
@@ -294,7 +335,11 @@ public class FileTranslator {
     }
     
     public static byte[] shortToByteArray(short data) {
-        return new byte[] { (byte) (data & 0xff), (byte) ((data >>> 8) & 0xff) };
+        // >>> is shift-right-zero-fill operator
+        return new byte[] {
+            (byte) (data & 0xff), 
+            (byte) ((data >>> 8) & 0xff) 
+        };
     }
     
     private static int byteArrayToShort(byte[] bytes) {

@@ -374,7 +374,7 @@ public class TranslatorUI extends Application {
                 // height of image
                 height = (int)img.getHeight();
                 
-                total = width * height * 3;
+                total = width * height;
                 
                 is_image = true;
                 return true;
